@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Profile — IoT Health Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../public/css/styles.css">
+</head>
+<body>
+<div class="app-layout">
+  <nav class="sidebar">
+    <div class="sidebar-brand"><span class="brand-icon"></span><span class="brand-name">HealthWatch</span></div>
+    <div class="sidebar-links">
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon"></span> Dashboard</a>
+      <a href="history.html" class="nav-link"><span class="nav-icon"></span> History</a>
+      <a href="alerts.html" class="nav-link"><span class="nav-icon"></span> Alerts</a>
+      <a href="profile.html" class="nav-link active"><span class="nav-icon"></span> Profile</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-pill" id="userPill">...</div>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div><h1 class="page-title">Profile</h1><p class="page-sub">Manage your account & device settings</p></div>
+    </div>
+
+    <div class="profile-grid">
+      <!-- Account Info Card -->
+      <div class="profile-card">
+        <div class="profile-avatar" id="avatarInitials">?</div>
+        <h3 id="profileName" style="margin-top:14px;font-size:20px;font-weight:600">Loading...</h3>
+        <p id="profileEmail" style="color:#64748b;font-size:13px;margin-top:4px"></p>
+        <span class="tag tag-ok" id="profileRole" style="margin-top:10px;display:inline-block">patient</span>
+
+        <div class="profile-stats">
+          <div class="pstat"><strong id="statReadings">--</strong><span>Readings</span></div>
+          <div class="pstat"><strong id="statAlerts">--</strong><span>Alerts</span></div>
+        </div>
+      </div>
+
+      <!-- Edit Form -->
+      <div class="edit-card">
+        <h3 style="font-size:17px;font-weight:600;margin-bottom:22px">Edit Profile</h3>
+
+        <div class="form-row">
+          <div class="form-group"><label>Full Name</label><input type="text" id="editName" /></div>
+          <div class="form-group"><label>Phone</label><input type="tel" id="editPhone" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Emergency Contact Email</label><input type="email" id="editEmergency" /></div>
+          <div class="form-group"><label>Device ID</label><input type="text" id="editDeviceId" /></div>
+        </div>
+
+        <div id="profileMsg" style="display:none;padding:11px 15px;border-radius:10px;font-size:13px;margin-top:10px"></div>
+        <button class="btn-primary" style="margin-top:20px;width:100%;padding:13px" onclick="saveProfile()">Save Changes</button>
+
+        <hr style="margin:28px 0;border:none;border-top:1px solid #f1f5f9">
+
+        <h3 style="font-size:17px;font-weight:600;margin-bottom:18px;color:#dc2626">Danger Zone</h3>
+        <button class="btn-danger" style="width:100%;padding:12px" onclick="deleteAccount()">🗑 Delete My Account</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../public/css/common.js"></script>
+<script>
+  checkAuth(); loadUser();
+  const API = 'http://localhost:5000/api';
+  const token = localStorage.getItem('token');
+
+  async function loadProfile() {
+    try {
+      const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      const u = data.user;
+
+      document.getElementById('avatarInitials').textContent = u.name?.charAt(0).toUpperCase() || '?';
+      document.getElementById('profileName').textContent = u.name;
+      document.getElementById('profileEmail').textContent = u.email;
+      document.getElementById('profileRole').textContent = u.role;
+      document.getElementById('editName').value = u.name || '';
+      document.getElementById('editPhone').value = u.phone || '';
+      document.getElementById('editEmergency').value = u.emergencyContact || '';
+      document.getElementById('editDeviceId').value = u.deviceId || '';
+
+      // Load stats
+      const [hRes, aRes] = await Promise.all([
+        fetch(`${API}/health/all?limit=1`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/alerts?limit=1`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      const hData = await hRes.json();
+      const aData = await aRes.json();
+      document.getElementById('statReadings').textContent = hData.total || 0;
+      document.getElementById('statAlerts').textContent = aData.total || 0;
+    } catch (e) { console.error(e); }
+  }
+
+  async function saveProfile() {
+    const msg = document.getElementById('profileMsg');
+    const body = {
+      name: document.getElementById('editName').value.trim(),
+      phone: document.getElementById('editPhone').value.trim(),
+      emergencyContact: document.getElementById('editEmergency').value.trim(),
+      deviceId: document.getElementById('editDeviceId').value.trim()
+    };
+    try {
+      const res = await fetch(`${API}/auth/profile`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      msg.style.background = '#dcfce7'; msg.style.color = '#16a34a';
+      msg.textContent = '✅ Profile updated successfully!'; msg.style.display = 'block';
+      loadProfile();
+    } catch (e) {
+      msg.style.background = '#fee2e2'; msg.style.color = '#dc2626';
+      msg.textContent = '❌ ' + e.message; msg.style.display = 'block';
+    }
+  }
+
+  async function deleteAccount() {
+    if (!confirm('This will permanently delete your account and all data. Are you absolutely sure?')) return;
+    await fetch(`${API}/auth/account`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    localStorage.clear();
+    window.location.href = 'login.html';
+  }
+
+  loadProfile();
+</script>
+</body>
+</html>

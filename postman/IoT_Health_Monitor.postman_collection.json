@@ -1,0 +1,266 @@
+{
+  "info": {
+    "name": "IoT Health Monitor — MERN API",
+    "_postman_id": "iot-health-mern-v2",
+    "description": "Complete API collection for IoT Health Monitoring System. Run Auth > Register first, then copy the token into the collection variable 'token'.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5000/api" },
+    { "key": "token", "value": "PASTE_JWT_TOKEN_HERE" },
+    { "key": "record_id", "value": "" },
+    { "key": "alert_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/auth/register", "host": ["{{base_url}}"], "path": ["auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tanisha Majmudar\",\n  \"email\": \"tanisha@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"+91 98765 43210\",\n  \"emergencyContact\": \"guardian@example.com\",\n  \"role\": \"patient\",\n  \"deviceId\": \"ESP8266\"\n}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Register OK', () => pm.response.to.have.status(201));", "const d = pm.response.json(); if(d.token) pm.collectionVariables.set('token', d.token);"] }
+          }]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tanisha@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Login OK', () => pm.response.to.have.status(200));", "const d = pm.response.json(); if(d.token) pm.collectionVariables.set('token', d.token);"] }
+          }]
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth","me"] }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/auth/profile", "host": ["{{base_url}}"], "path": ["auth","profile"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tanisha M.\",\n  \"phone\": \"+91 11111 22222\",\n  \"emergencyContact\": \"new-guardian@example.com\",\n  \"deviceId\": \"ESP8266-01\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Account",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/auth/account", "host": ["{{base_url}}"], "path": ["auth","account"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Health Data (IoT + CRUD)",
+      "item": [
+        {
+          "name": "POST from ESP8266 (no auth)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/health/data", "host": ["{{base_url}}"], "path": ["health","data"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bpm\": 85,\n  \"spo2\": 97,\n  \"fall\": false,\n  \"status\": \"monitoring\",\n  \"deviceId\": \"ESP8266\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Fall Alert from ESP8266",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/health/data", "host": ["{{base_url}}"], "path": ["health","data"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bpm\": 110,\n  \"spo2\": 94,\n  \"fall\": true,\n  \"status\": \"alert_sent\",\n  \"deviceId\": \"ESP8266\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET Live Data",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/health/live", "host": ["{{base_url}}"], "path": ["health","live"] }
+          }
+        },
+        {
+          "name": "GET History (last 20)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/health/history?limit=20", "host": ["{{base_url}}"], "path": ["health","history"], "query": [{ "key": "limit", "value": "20" }] }
+          }
+        },
+        {
+          "name": "GET All Records (paginated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/health/all?page=1&limit=50", "host": ["{{base_url}}"], "path": ["health","all"], "query": [{"key":"page","value":"1"},{"key":"limit","value":"50"}] }
+          }
+        },
+        {
+          "name": "GET Single Record",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/health/{{record_id}}", "host": ["{{base_url}}"], "path": ["health","{{record_id}}"] }
+          }
+        },
+        {
+          "name": "UPDATE Record Notes",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/health/{{record_id}}", "host": ["{{base_url}}"], "path": ["health","{{record_id}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"notes\": \"Patient was exercising at this time\"\n}" }
+          }
+        },
+        {
+          "name": "DELETE Single Record",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/health/{{record_id}}", "host": ["{{base_url}}"], "path": ["health","{{record_id}}"] }
+          }
+        },
+        {
+          "name": "DELETE All Records",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/health/", "host": ["{{base_url}}"], "path": ["health",""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Alerts",
+      "item": [
+        {
+          "name": "GET All Alerts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/alerts?page=1&limit=20", "host": ["{{base_url}}"], "path": ["alerts"], "query": [{"key":"page","value":"1"},{"key":"limit","value":"20"}] }
+          }
+        },
+        {
+          "name": "GET Unresolved Alerts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/alerts?resolved=false", "host": ["{{base_url}}"], "path": ["alerts"], "query": [{"key":"resolved","value":"false"}] }
+          }
+        },
+        {
+          "name": "GET Unresolved Count",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/alerts/unresolved/count", "host": ["{{base_url}}"], "path": ["alerts","unresolved","count"] }
+          }
+        },
+        {
+          "name": "GET Single Alert",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/alerts/{{alert_id}}", "host": ["{{base_url}}"], "path": ["alerts","{{alert_id}}"] }
+          }
+        },
+        {
+          "name": "RESOLVE Alert",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/alerts/{{alert_id}}/resolve", "host": ["{{base_url}}"], "path": ["alerts","{{alert_id}}","resolve"] }
+          }
+        },
+        {
+          "name": "DELETE Single Alert",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/alerts/{{alert_id}}", "host": ["{{base_url}}"], "path": ["alerts","{{alert_id}}"] }
+          }
+        },
+        {
+          "name": "DELETE All Resolved",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/alerts/", "host": ["{{base_url}}"], "path": ["alerts",""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👥 Users (Admin)",
+      "item": [
+        {
+          "name": "GET All Users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] }
+          }
+        },
+        {
+          "name": "GET User by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/users/USER_ID_HERE", "host": ["{{base_url}}"], "path": ["users","USER_ID_HERE"] }
+          }
+        },
+        {
+          "name": "UPDATE User",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/users/USER_ID_HERE", "host": ["{{base_url}}"], "path": ["users","USER_ID_HERE"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"+91 99999 00000\"\n}" }
+          }
+        },
+        {
+          "name": "DELETE User (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/users/USER_ID_HERE", "host": ["{{base_url}}"], "path": ["users","USER_ID_HERE"] }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>History — IoT Health Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../public/css/styles.css">
+</head>
+<body>
+<div class="app-layout">
+  <nav class="sidebar">
+    <div class="sidebar-brand"><span class="brand-icon"></span><span class="brand-name">HealthWatch</span></div>
+    <div class="sidebar-links">
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon"></span> Dashboard</a>
+      <a href="history.html" class="nav-link active"><span class="nav-icon"></span> History</a>
+      <a href="alerts.html" class="nav-link"><span class="nav-icon"></span> Alerts</a>
+      <a href="profile.html" class="nav-link"><span class="nav-icon"></span> Profile</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-pill" id="userPill">...</div>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div><h1 class="page-title">Health History</h1><p class="page-sub">All recorded sensor readings</p></div>
+      <button class="btn-danger" onclick="clearAllRecords()" style="padding:10px 20px;font-size:13px">🗑 Clear All</button>
+    </div>
+
+    <div class="filter-bar">
+      <input type="number" id="limitInput" placeholder="Records to load" value="50" style="width:160px" />
+      <button class="btn-primary" onclick="loadHistory()">Load</button>
+    </div>
+
+    <div class="table-card">
+      <table class="data-table" id="historyTable">
+        <thead>
+          <tr>
+            <th>#</th><th>Time</th><th>BPM</th><th>SpO₂</th><th>Status</th><th>Fall</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999;display:flex;align-items:center;justify-content:center;">
+      <div style="background:white;border-radius:20px;padding:32px;width:400px;max-width:90vw;">
+        <h3 style="margin-bottom:16px">Edit Record Notes</h3>
+        <input type="hidden" id="editId" />
+        <textarea id="editNotes" rows="4" style="width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:10px;font-family:Poppins,sans-serif;font-size:13px;resize:vertical"></textarea>
+        <div style="display:flex;gap:12px;margin-top:16px">
+          <button class="btn-primary" style="flex:1" onclick="saveEdit()">Save</button>
+          <button onclick="closeModal()" style="flex:1;padding:10px;border:1.5px solid #e2e8f0;background:white;border-radius:10px;cursor:pointer;font-family:Poppins,sans-serif">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="../public/css/common.js"></script>
+<script>
+  checkAuth(); loadUser();
+  const API = 'http://localhost:5000/api';
+  const token = localStorage.getItem('token');
+
+  async function loadHistory() {
+    const limit = document.getElementById('limitInput').value || 50;
+    const body = document.getElementById('historyBody');
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8">Loading...</td></tr>';
+    try {
+      const res = await fetch(`${API}/health/all?limit=${limit}&page=1`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      const records = data.data || [];
+      if (!records.length) { body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8">No records found</td></tr>'; return; }
+
+      body.innerHTML = records.map((r, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${new Date(r.timestamp).toLocaleString()}</td>
+          <td><span class="tag ${r.bpm > 100 ? 'tag-warn' : r.bpm < 60 ? 'tag-danger' : 'tag-ok'}">${r.bpm || '--'}</span></td>
+          <td><span class="tag ${r.spo2 < 90 ? 'tag-danger' : r.spo2 < 95 ? 'tag-warn' : 'tag-ok'}">${r.spo2 || '--'}%</span></td>
+          <td>${r.status || 'monitoring'}</td>
+          <td>${r.fall ? '<span class="tag tag-danger">FALL</span>' : '<span class="tag tag-ok">Safe</span>'}</td>
+          <td>
+            <button class="action-btn" onclick="openEdit('${r._id}', \`${(r.notes||'').replace(/`/g,'')}\`)">✏️</button>
+            <button class="action-btn action-danger" onclick="deleteRecord('${r._id}')">🗑</button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) { body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#ef4444">Error loading data</td></tr>'; }
+  }
+
+  function openEdit(id, notes) {
+    document.getElementById('editId').value = id;
+    document.getElementById('editNotes').value = notes;
+    document.getElementById('editModal').style.display = 'flex';
+  }
+  function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+
+  async function saveEdit() {
+    const id = document.getElementById('editId').value;
+    const notes = document.getElementById('editNotes').value;
+    await fetch(`${API}/health/${id}`, { method: 'PUT', headers: { 'Content-Type':'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ notes }) });
+    closeModal(); loadHistory();
+  }
+
+  async function deleteRecord(id) {
+    if (!confirm('Delete this record?')) return;
+    await fetch(`${API}/health/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    loadHistory();
+  }
+
+  async function clearAllRecords() {
+    if (!confirm('This will delete ALL health records. Are you sure?')) return;
+    await fetch(`${API}/health/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    loadHistory();
+  }
+
+  loadHistory();
+</script>
+</body>
+</html>

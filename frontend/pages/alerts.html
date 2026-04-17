@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Alerts — IoT Health Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../public/css/styles.css">
+</head>
+<body>
+<div class="app-layout">
+  <nav class="sidebar">
+    <div class="sidebar-brand"><span class="brand-icon"></span><span class="brand-name">HealthWatch</span></div>
+    <div class="sidebar-links">
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon"></span> Dashboard</a>
+      <a href="history.html" class="nav-link"><span class="nav-icon"></span> History</a>
+      <a href="alerts.html" class="nav-link active"><span class="nav-icon"></span> Alerts</a>
+      <a href="profile.html" class="nav-link"><span class="nav-icon"></span> Profile</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-pill" id="userPill">...</div>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div><h1 class="page-title">Alerts</h1><p class="page-sub">Fall detections and health warnings</p></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-secondary" onclick="filterAlerts('all')">All</button>
+        <button class="btn-secondary" onclick="filterAlerts('unresolved')">Unresolved</button>
+        <button class="btn-danger" onclick="clearResolved()" style="padding:10px 18px;font-size:13px">Clear Resolved</button>
+      </div>
+    </div>
+
+    <div class="alerts-summary">
+      <div class="summary-box summary-red"><div class="sum-num" id="totalFall">--</div><div class="sum-label">Fall Alerts</div></div>
+      <div class="summary-box summary-orange"><div class="sum-num" id="totalSpo2">--</div><div class="sum-label">Low SpO₂</div></div>
+      <div class="summary-box summary-green"><div class="sum-num" id="totalResolved">--</div><div class="sum-label">Resolved</div></div>
+      <div class="summary-box summary-blue"><div class="sum-num" id="totalUnresolved">--</div><div class="sum-label">Unresolved</div></div>
+    </div>
+
+    <div class="table-card">
+      <table class="data-table">
+        <thead><tr><th>#</th><th>Time</th><th>Type</th><th>Message</th><th>BPM</th><th>SpO₂</th><th>Email Sent</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="alertsBody">
+          <tr><td colspan="9" style="text-align:center;padding:30px;color:#94a3b8">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script src="../public/css/common.js"></script>
+<script>
+  checkAuth(); loadUser();
+  const API = 'http://localhost:5000/api';
+  const token = localStorage.getItem('token');
+  let currentFilter = 'all';
+
+  const typeIcon = { fall: '🚨', low_spo2: '🫁', high_bpm: '💓', low_bpm: '💔' };
+
+  async function loadAlerts() {
+    const body = document.getElementById('alertsBody');
+    body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:#94a3b8">Loading...</td></tr>';
+    try {
+      let url = `${API}/alerts?limit=50`;
+      if (currentFilter === 'unresolved') url += '&resolved=false';
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      const alerts = data.data || [];
+
+      // Summary counts
+      document.getElementById('totalFall').textContent = alerts.filter(a => a.type === 'fall').length;
+      document.getElementById('totalSpo2').textContent = alerts.filter(a => a.type === 'low_spo2').length;
+      document.getElementById('totalResolved').textContent = alerts.filter(a => a.resolved).length;
+      document.getElementById('totalUnresolved').textContent = alerts.filter(a => !a.resolved).length;
+
+      if (!alerts.length) {
+        body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:#94a3b8">No alerts found ✅</td></tr>';
+        return;
+      }
+
+      body.innerHTML = alerts.map((a, i) => `
+        <tr class="${a.resolved ? '' : 'row-unresolved'}">
+          <td>${i + 1}</td>
+          <td style="font-size:12px">${new Date(a.timestamp).toLocaleString()}</td>
+          <td><span class="tag ${a.type === 'fall' ? 'tag-danger' : 'tag-warn'}">${typeIcon[a.type] || '⚠️'} ${a.type.replace('_', ' ')}</span></td>
+          <td style="font-size:12px;max-width:200px">${a.message}</td>
+          <td>${a.bpm || '--'}</td>
+          <td>${a.spo2 ? a.spo2 + '%' : '--'}</td>
+          <td>${a.emailSent ? '✅' : '❌'}</td>
+          <td><span class="tag ${a.resolved ? 'tag-ok' : 'tag-danger'}">${a.resolved ? 'Resolved' : 'Active'}</span></td>
+          <td style="display:flex;gap:6px">
+            ${!a.resolved ? `<button class="action-btn" onclick="resolveAlert('${a._id}')">✔</button>` : ''}
+            <button class="action-btn action-danger" onclick="deleteAlert('${a._id}')">🗑</button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:#ef4444">Error loading alerts</td></tr>';
+    }
+  }
+
+  function filterAlerts(f) { currentFilter = f; loadAlerts(); }
+
+  async function resolveAlert(id) {
+    await fetch(`${API}/alerts/${id}/resolve`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } });
+    loadAlerts();
+  }
+
+  async function deleteAlert(id) {
+    if (!confirm('Delete this alert?')) return;
+    await fetch(`${API}/alerts/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    loadAlerts();
+  }
+
+  async function clearResolved() {
+    if (!confirm('Delete all resolved alerts?')) return;
+    await fetch(`${API}/alerts/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    loadAlerts();
+  }
+
+  loadAlerts();
+</script>
+</body>
+</html>

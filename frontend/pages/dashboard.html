@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard — IoT Health Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="../public/css/styles.css">
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🚑</span>
+      <span class="brand-name">HealthWatch</span>
+    </div>
+    <div class="sidebar-links">
+      <a href="dashboard.html" class="nav-link active"><span class="nav-icon"></span> Dashboard</a>
+      <a href="history.html" class="nav-link"><span class="nav-icon"></span> History</a>
+      <a href="alerts.html" class="nav-link"><span class="nav-icon"></span> Alerts <span class="badge" id="alertBadge" style="display:none"></span></a>
+      <a href="profile.html" class="nav-link"><span class="nav-icon"></span> Profile</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-pill" id="userPill">...</div>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub" id="greetMsg">Good morning!</p>
+      </div>
+      <div class="status-pill" id="deviceStatus">
+        <span class="dot"></span> Device Online
+      </div>
+    </div>
+
+    <!-- VITAL CARDS -->
+    <div class="vitals-grid">
+      <div class="vital-card pulse-card">
+        <div class="vital-label"> Heart Rate</div>
+        <div class="vital-value" id="heartRate">--</div>
+        <div class="vital-unit">BPM</div>
+        <div class="vital-status" id="bpmStatus">Waiting for data...</div>
+      </div>
+
+      <div class="vital-card spo2-card">
+        <div class="vital-label"> SpO₂ Level</div>
+        <div class="vital-value" id="spo2">--</div>
+        <div class="vital-unit">%</div>
+        <div class="vital-status" id="spo2Status">Oxygen Saturation</div>
+      </div>
+
+      <div class="vital-card fall-card" id="fallCard">
+        <div class="vital-label"> Fall Status</div>
+        <div class="vital-value fall-value" id="fallStatus">SAFE</div>
+        <div class="vital-unit" style="opacity:0">-</div>
+        <div class="vital-status">Motion Detection</div>
+      </div>
+
+      <div class="vital-card stats-card">
+        <div class="vital-label"> Today's Stats</div>
+        <div class="stats-row"><span>Readings</span><strong id="todayCount">--</strong></div>
+        <div class="stats-row"><span>Avg BPM</span><strong id="avgBpm">--</strong></div>
+        <div class="stats-row"><span>Avg SpO₂</span><strong id="avgSpo2">--</strong></div>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>Heart Rate Trend</h3>
+        <span class="live-tag">● LIVE</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="heartChart"></canvas>
+      </div>
+    </div>
+
+    <!-- SPO2 CHART -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>SpO₂ Trend</h3>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="spo2Chart"></canvas>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../public/css/common.js"></script>
+<script>
+  checkAuth();
+  loadUser();
+
+  const API = 'http://localhost:5000/api';
+  const token = localStorage.getItem('token');
+
+  // Charts
+  const ctxHeart = document.getElementById('heartChart').getContext('2d');
+  const ctxSpo2 = document.getElementById('spo2Chart').getContext('2d');
+
+  const heartChart = new Chart(ctxHeart, {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'BPM', data: [], borderColor: '#e74c3c', backgroundColor: 'rgba(231,76,60,0.1)', fill: true, tension: 0.4, pointRadius: 3 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 40, max: 180, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } }
+  });
+
+  const spo2Chart = new Chart(ctxSpo2, {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'SpO₂', data: [], borderColor: '#028090', backgroundColor: 'rgba(2,128,144,0.1)', fill: true, tension: 0.4, pointRadius: 3 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 85, max: 100, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } }
+  });
+
+  async function fetchLive() {
+    try {
+      const res = await fetch(`${API}/health/live`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return;
+      const d = await res.json();
+      if (!d || !d._id) return;
+
+      // BPM
+      const bpmEl = document.getElementById('heartRate');
+      if (d.bpm) {
+        bpmEl.textContent = d.bpm;
+        document.getElementById('bpmStatus').textContent = d.bpm < 60 ? ' Low' : d.bpm > 100 ? ' Elevated' : ' Normal';
+      }
+
+      // SPO2
+      const spo2El = document.getElementById('spo2');
+      if (d.spo2) {
+        spo2El.textContent = d.spo2;
+        spo2El.style.color = d.spo2 >= 95 ? '#16a34a' : d.spo2 >= 90 ? '#d97706' : '#dc2626';
+        document.getElementById('spo2Status').textContent = d.spo2 >= 95 ? ' Normal' : d.spo2 >= 90 ? ' Low-Normal' : ' Critical';
+      }
+
+      // Fall
+      const fallCard = document.getElementById('fallCard');
+      const fallEl = document.getElementById('fallStatus');
+      if (d.fall) {
+        fallEl.textContent = ' FALL!'; fallEl.style.color = '#dc2626';
+        fallCard.style.background = 'linear-gradient(135deg, #fee2e2, #fecaca)';
+      } else {
+        fallEl.textContent = 'SAFE'; fallEl.style.color = '#16a34a';
+        fallCard.style.background = '';
+      }
+    } catch (e) { console.log('Live fetch error'); }
+  }
+
+  async function fetchHistory() {
+    try {
+      const res = await fetch(`${API}/health/history?limit=20`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return;
+      const records = await res.json();
+      if (!records.length) return;
+
+      const labels = records.map(r => new Date(r.timestamp).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }));
+      const bpmData = records.map(r => r.bpm);
+      const spo2Data = records.map(r => r.spo2);
+
+      heartChart.data.labels = labels;
+      heartChart.data.datasets[0].data = bpmData;
+      heartChart.update();
+
+      spo2Chart.data.labels = labels;
+      spo2Chart.data.datasets[0].data = spo2Data;
+      spo2Chart.update();
+
+      // Stats
+      const validBpm = bpmData.filter(Boolean);
+      const validSpo2 = spo2Data.filter(Boolean);
+      document.getElementById('todayCount').textContent = records.length;
+      document.getElementById('avgBpm').textContent = validBpm.length ? Math.round(validBpm.reduce((a,b)=>a+b)/validBpm.length) : '--';
+      document.getElementById('avgSpo2').textContent = validSpo2.length ? (validSpo2.reduce((a,b)=>a+b)/validSpo2.length).toFixed(1) : '--';
+    } catch (e) { console.log('History fetch error'); }
+  }
+
+  async function fetchAlertCount() {
+    try {
+      const res = await fetch(`${API}/alerts/unresolved/count`, { headers: { Authorization: `Bearer ${token}` } });
+      const d = await res.json();
+      const badge = document.getElementById('alertBadge');
+      if (d.count > 0) { badge.textContent = d.count; badge.style.display = 'inline'; }
+    } catch (e) {}
+  }
+
+  // Greet
+  const hr = new Date().getHours();
+  document.getElementById('greetMsg').textContent = hr < 12 ? 'Good morning!' : hr < 17 ? 'Good afternoon!' : 'Good evening!';
+
+  fetchLive(); fetchHistory(); fetchAlertCount();
+  setInterval(fetchLive, 3000);
+  setInterval(fetchHistory, 5000);
+  setInterval(fetchAlertCount, 10000);
+</script>
+</body>
+</html>

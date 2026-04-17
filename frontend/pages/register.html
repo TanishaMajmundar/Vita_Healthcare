@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register — IoT Health Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Poppins', sans-serif; min-height: 100vh; display: flex; background: #f0f4f8; }
+
+    .auth-left { flex: 1; background: linear-gradient(135deg, #028090, #00A896, #02C39A); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 40px; color: white; }
+    .auth-left .logo { font-size: 48px; margin-bottom: 20px; }
+    .auth-left h1 { font-size: 28px; font-weight: 700; text-align: center; }
+    .auth-left p { font-size: 14px; margin-top: 12px; opacity: 0.85; text-align: center; max-width: 300px; line-height: 1.7; }
+
+    .auth-right { width: 520px; display: flex; flex-direction: column; justify-content: center; padding: 50px; background: white; overflow-y: auto; }
+    .auth-right h2 { font-size: 26px; font-weight: 700; color: #1e293b; }
+    .auth-right p.sub { color: #64748b; margin-top: 6px; font-size: 13px; }
+
+    .form-row { display: flex; gap: 16px; margin-top: 20px; }
+    .form-group { margin-top: 20px; flex: 1; }
+    label { font-size: 12px; font-weight: 600; color: #374151; display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input, select { width: 100%; padding: 11px 15px; border: 1.5px solid #e2e8f0; border-radius: 11px; font-size: 13px; font-family: 'Poppins', sans-serif; transition: border-color 0.2s; background: #f8fafc; }
+    input:focus, select:focus { outline: none; border-color: #028090; background: white; }
+
+    .btn-primary { width: 100%; margin-top: 28px; padding: 13px; background: linear-gradient(135deg, #028090, #00A896); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: opacity 0.2s; }
+    .btn-primary:hover { opacity: 0.9; }
+    .alt-link { text-align: center; margin-top: 18px; font-size: 13px; color: #64748b; }
+    .alt-link a { color: #028090; font-weight: 600; text-decoration: none; }
+    .error-msg { background: #fee2e2; color: #dc2626; padding: 11px 15px; border-radius: 10px; font-size: 12px; margin-top: 14px; display: none; }
+    .success-msg { background: #dcfce7; color: #16a34a; padding: 11px 15px; border-radius: 10px; font-size: 12px; margin-top: 14px; display: none; }
+
+    @media (max-width: 900px) { .auth-left { display: none; } .auth-right { width: 100%; padding: 30px 24px; } .form-row { flex-direction: column; gap: 0; } }
+  </style>
+</head>
+<body>
+  <div class="auth-left">
+    <div class="logo">🚑</div>
+    <h1>IoT Health Monitor</h1>
+    <p>Create your account to start monitoring health vitals in real time with your IoT device</p>
+  </div>
+
+  <div class="auth-right">
+    <h2>Create Account 🔐</h2>
+    <p class="sub">Fill in your details to get started</p>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" id="name" placeholder="John Doe" />
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="role">
+          <option value="patient">Patient</option>
+          <option value="caretaker">Caretaker</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Email Address *</label>
+      <input type="email" id="email" placeholder="you@example.com" />
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Password *</label>
+        <input type="password" id="password" placeholder="Min 6 characters" />
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="tel" id="phone" placeholder="+91 98765 43210" />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Emergency Contact Email</label>
+        <input type="email" id="emergencyContact" placeholder="guardian@email.com" />
+      </div>
+      <div class="form-group">
+        <label>Device ID</label>
+        <input type="text" id="deviceId" placeholder="ESP8266" />
+      </div>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="success-msg" id="successMsg"></div>
+
+    <button class="btn-primary" onclick="handleRegister()">Create Account</button>
+    <p class="alt-link">Already have an account? <a href="login.html">Sign in →</a></p>
+  </div>
+
+  <script>
+    const API = 'http://localhost:5000/api';
+    async function handleRegister() {
+      const err = document.getElementById('errorMsg');
+      const ok = document.getElementById('successMsg');
+      err.style.display = 'none'; ok.style.display = 'none';
+
+      const body = {
+        name: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value,
+        phone: document.getElementById('phone').value.trim(),
+        emergencyContact: document.getElementById('emergencyContact').value.trim(),
+        role: document.getElementById('role').value,
+        deviceId: document.getElementById('deviceId').value.trim() || 'ESP8266'
+      };
+
+      if (!body.name || !body.email || !body.password) {
+        err.textContent = 'Name, email and password are required.'; err.style.display = 'block'; return;
+      }
+      if (body.password.length < 6) {
+        err.textContent = 'Password must be at least 6 characters.'; err.style.display = 'block'; return;
+      }
+
+      try {
+        const res = await fetch(`${API}/auth/register`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) { err.textContent = data.error || 'Registration failed'; err.style.display = 'block'; return; }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        ok.textContent = 'Account created! Redirecting to dashboard...'; ok.style.display = 'block';
+        setTimeout(() => window.location.href = 'dashboard.html', 1200);
+      } catch (e) {
+        err.textContent = 'Server unreachable. Is the backend running?'; err.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
