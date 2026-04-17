@@ -1,4 +1,4 @@
-# 🚑 IoT Health Monitor — MERN Stack
+# IoT Health Monitor — MERN Stack
 
 Real-time IoT-based health monitoring system with fall detection, built on the MERN stack (MongoDB, Express, React-free Node.js, HTML/CSS/JS frontend).
 
@@ -40,7 +40,7 @@ iot-health-mern/
 
 ---
 
-## ⚙️ Setup & Run
+## Setup & Run
 
 ### Prerequisites
 - Node.js v18+
@@ -110,7 +110,7 @@ Make sure the `deviceId` in your `.ino` matches the `deviceId` set in the user's
 
 ---
 
-## 🧪 Testing with Postman
+## Testing with Postman
 
 1. Import `postman/IoT_Health_Monitor.postman_collection.json` into Postman
 2. Run **Register User** — token is auto-saved to collection variable
@@ -118,7 +118,7 @@ Make sure the `deviceId` in your `.ino` matches the `deviceId` set in the user's
 
 ---
 
-## 📦 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
