@@ -1,8 +1,6 @@
 # IoT Health Monitor — IoT Health Monitoring System
 
-Real-time IoT-based health monitoring system with fall detection, built on the MERN stack (MongoDB, Express, React-free Node.js, HTML/CSS/JS frontend).
-
----
+Real-time IoT-based health monitoring system with fall detection, built using MongoDB, Express, Node.js, HTML, CSS, and JavaScript.
 
 ---
 
