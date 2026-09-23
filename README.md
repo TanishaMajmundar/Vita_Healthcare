@@ -1,4 +1,4 @@
-# IoT Health Monitor — MERN Stack
+# IoT Health Monitor — IoT Health Monitoring System
 
 Real-time IoT-based health monitoring system with fall detection, built on the MERN stack (MongoDB, Express, React-free Node.js, HTML/CSS/JS frontend).
 
@@ -8,9 +8,7 @@ Real-time IoT-based health monitoring system with fall detection, built on the M
 
 ## 🎥 Demo
 
-Watch the working demonstration of the IoT Health Monitor:
-
-**[▶️ Watch the Demo Video](YOUR_GITHUB_VIDEO_LINK)**
+[▶️ Watch the Vita Healthcare Working Demo](https://github.com/user-attachments/assets/21112845-f400-4f25-ae63-5adbe5b67690)
 
 ---
 
