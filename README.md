@@ -13,7 +13,7 @@ Real-time IoT-based health monitoring system with fall detection, built using Mo
 ## 🗂 Project Structure
 
 ```
-iot-health-mern/
+Vita_Healthcare/
 ├── backend/
 │   ├── models/
 │   │   ├── User.js          # User schema (bcrypt password)
